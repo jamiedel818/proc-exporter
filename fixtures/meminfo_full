@@ -1,13 +1,3 @@
-# Mini Node Exporter
-
-For later with prometheus https://signoz.io/guides/why-does-prometheus-consume-so-much-memory/
-
-Step 1.
-- learn about the proc files I am interested in and how to understand their contents.
-
-One file I want is `meminfo`. This is in kiB
-```
-cat /proc/meminfo
 MemTotal:        3888568 kB
 MemFree:         2838832 kB
 MemAvailable:    3551232 kB
@@ -49,19 +39,3 @@ VmallocChunk:          0 kB
 Percpu:             1440 kB
 CmaTotal:         524288 kB
 CmaFree:          511596 kB
-```
-
-Step 2.
-- Open the proc files. I can probably write a general open file function for this.
-- What is the best way to monitor a file that changes frequently. eg: if I am going to open this every X seconds. 
-
-Step 3.
-- Parse out the information you care about from the proc files.
-- Should I do this sequentially or in parallel. eg: Open meminfo, then open cpuinfo, or do them in parallel. latter is more complicated especially if I use a global state.
-
-Step 4.
-- Store the information
-
-Step 5.
-- Serve the information as a standard prometheus metric. Learn this format.
-
