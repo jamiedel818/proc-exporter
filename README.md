@@ -2,6 +2,14 @@
 
 For later with prometheus https://signoz.io/guides/why-does-prometheus-consume-so-much-memory/
 
+Note as of 10/25/25
+- wrote the meminfo parser and tests. Is to think how I want to take the data and output them as prometheus metrics.
+- Make it so the program takes a path to the proc directory and then file names are used by collectors. 
+- I want introduce the collection logic. eg, scan every X seconds. Aquire the lock to write, scan, update data, release the lock. Probably in its own goroutine
+- Implement HTTP server logic. `/metrics`. When request comes in, grab the lock to read, return the data in prometheus format, release the lock.
+- Add in some config values in the form of env vars. eg `SCAN_FREQUENCY`, `PROC_DIRECTORY_PATH`. 
+- Add some basic logging.
+
 Step 1.
 - learn about the proc files I am interested in and how to understand their contents.
 
