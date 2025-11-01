@@ -9,21 +9,20 @@ import (
 
 func TestMemInfoParseProcFile(t *testing.T) {
 	// happy path
-	testFile := "../fixtures/meminfo_partial"
-	m := MemInfo{}
+	m := MemInfo{ProcFileName: "../fixtures/meminfo_partial"}
 
-	err := m.ParseProcFile(testFile)
+	err := m.ParseProcFile()
 	assert.Nil(t, err)
 	assert.Equal(t, map[string]uint64{"memfree": 2906963968, "memtotal": 3981893632}, m.data)
 
 	// invalid file format
-	testFile = "../fixtures/meminfo_invalid"
-	err = m.ParseProcFile(testFile)
+	m.ProcFileName = "../fixtures/meminfo_invalid"
+	err = m.ParseProcFile()
 	assert.EqualError(t, err, "could not parse meminfo. could not convert \"bar\" to uint64 for metric \"foo\". strconv.ParseUint: parsing \"bar\": invalid syntax")
 
 	// error opening the file
-	testFile = "this_does_not_exist"
-	err = m.ParseProcFile(testFile)
+	m.ProcFileName = "this_does_not_exist"
+	err = m.ParseProcFile()
 	assert.EqualError(t, err, "could not open meminfo proc file \"this_does_not_exist\". open this_does_not_exist: no such file or directory")
 
 }
