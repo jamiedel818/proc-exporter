@@ -10,7 +10,7 @@ import (
 )
 
 type Collector interface {
-	ParseProcFile(procFileName string) error
+	ParseProcFile() error
 	GetMetricData() map[string]uint64
 	// Probably a method that can output prom style metrics
 }
@@ -21,14 +21,15 @@ type Collector interface {
 
 // Represents metrics pulled from /proc/meminfo
 type MemInfo struct {
-	data map[string]uint64
+	ProcFileName string
+	data         map[string]uint64
 }
 
 // ParseProcFile opens and closes proc file. Sets objects unexported `data“ field with the output of parseMemInfo().
-func (m *MemInfo) ParseProcFile(procFileName string) error {
-	fi, err := os.Open(procFileName)
+func (m *MemInfo) ParseProcFile() error {
+	fi, err := os.Open(m.ProcFileName)
 	if err != nil {
-		return fmt.Errorf("could not open meminfo proc file %q. %w", procFileName, err)
+		return fmt.Errorf("could not open meminfo proc file %q. %w", m.ProcFileName, err)
 	}
 
 	defer fi.Close()

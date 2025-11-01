@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"sync"
+	"time"
 
 	"github.com/jamidel818/mini-node-exporter/collector"
 )
@@ -26,25 +30,57 @@ Maybe use basic system logging
 */
 
 type AppHandler struct {
-	// timer
-	// lock
+	Lock    sync.Mutex
 	Metrics []collector.Collector
 }
 
+func (h *AppHandler) CollectMetrics() {
+	ticker := time.NewTicker(5 * time.Second)
+
+	defer ticker.Stop()
+	for {
+		<-ticker.C
+
+		fmt.Println("Taking the lock to write data")
+		h.Lock.Lock()
+
+		for _, c := range h.Metrics {
+			err := c.ParseProcFile()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		fmt.Println("Lock released after writing data")
+		h.Lock.Unlock()
+	}
+}
+
+func (h *AppHandler) GetMetrcs() []map[string]uint64 {
+	fmt.Println("Aquiring the lock to read metrics")
+	h.Lock.Lock()
+	defer h.Lock.Unlock()
+
+	result := []map[string]uint64{}
+	for _, c := range h.Metrics {
+		result = append(result, c.GetMetricData())
+	}
+	fmt.Println("Releasing the lock after reading metrics")
+	return result
+}
+
 func main() {
-	handler := AppHandler{
+	handler := &AppHandler{
+		Lock: sync.Mutex{},
 		Metrics: []collector.Collector{
-			&collector.MemInfo{},
+			&collector.MemInfo{ProcFileName: "./fixtures/meminfo_full"},
 		},
 	}
 
-	for _, m := range handler.Metrics {
-		fmt.Printf("Data before parsing %v\n", m.GetMetricData())
-		fmt.Println("----------")
-		err := m.ParseProcFile("./fixtures/meminfo_full")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Printf("Data after parsing %v\n", m.GetMetricData())
-	}
+	go handler.CollectMetrics()
+
+	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "%v", handler.GetMetrcs())
+	})
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
