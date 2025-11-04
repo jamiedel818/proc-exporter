@@ -9,6 +9,8 @@ Note as of 10/25/25
 - Implement HTTP server logic. `/metrics`. When request comes in, grab the lock to read, return the data in prometheus format, release the lock.
 - Add in some config values in the form of env vars. eg `SCAN_FREQUENCY`, `PROC_DIRECTORY_PATH`. 
 - Add some basic logging.
+- incoperate healthcheck
+- run tests on PR
 
 Step 1.
 - learn about the proc files I am interested in and how to understand their contents.

@@ -55,17 +55,17 @@ func (h *AppHandler) CollectMetrics() {
 	}
 }
 
-func (h *AppHandler) GetMetrcs() []map[string]uint64 {
+func (h *AppHandler) GetMetrcs() string {
 	fmt.Println("Aquiring the lock to read metrics")
 	h.Lock.Lock()
 	defer h.Lock.Unlock()
 
-	result := []map[string]uint64{}
+	metrics := ""
 	for _, c := range h.Metrics {
-		result = append(result, c.GetMetricData())
+		metrics += c.OutputPromMetrics()
 	}
 	fmt.Println("Releasing the lock after reading metrics")
-	return result
+	return metrics
 }
 
 func main() {
