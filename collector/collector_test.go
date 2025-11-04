@@ -1,62 +1,74 @@
 package collector
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMemInfoParseProcFile(t *testing.T) {
-	// happy path
-	m := MemInfo{ProcFileName: "../fixtures/meminfo_partial"}
+func TestOutputHelp(t *testing.T) {
+	m := promMetric{
+		name:        "test",
+		metricType:  metricGuage,
+		description: "test",
+	}
 
-	err := m.ParseProcFile()
-	assert.Nil(t, err)
-	assert.Equal(t, map[string]uint64{"memfree": 2906963968, "memtotal": 3981893632}, m.data)
-
-	// invalid file format
-	m.ProcFileName = "../fixtures/meminfo_invalid"
-	err = m.ParseProcFile()
-	assert.EqualError(t, err, "could not parse meminfo. could not convert \"bar\" to uint64 for metric \"foo\". strconv.ParseUint: parsing \"bar\": invalid syntax")
-
-	// error opening the file
-	m.ProcFileName = "this_does_not_exist"
-	err = m.ParseProcFile()
-	assert.EqualError(t, err, "could not open meminfo proc file \"this_does_not_exist\". open this_does_not_exist: no such file or directory")
-
+	assert.Equal(t, "# HELP test test\n", m.outputHelp())
 }
 
-func TestMemInfoGetMetricData(t *testing.T) {
-	m := MemInfo{}
-	assert.Nil(t, m.GetMetricData())
+func TestOutputType(t *testing.T) {
+	m := promMetric{
+		name:        "test",
+		metricType:  metricGuage,
+		description: "test",
+	}
 
-	m.data = map[string]uint64{"test": 1}
-	assert.Equal(t, map[string]uint64{"test": 1}, m.GetMetricData())
+	assert.Equal(t, "# TYPE test gauge\n", m.outputType())
 }
 
-func TestMemInfoparseMemInfo(t *testing.T) {
-	// happy path - meminfo file format
-	r := strings.NewReader("MemTotal:        3888568 kB\nMemFree:         2838832 kB")
-	d, err := parseMemInfo(r)
-	assert.Nil(t, err)
-	assert.Equal(t, map[string]uint64{"memtotal": 3888568, "memfree": 2838832}, d)
+func TestIsValidMetric(t *testing.T) {
+	tests := []struct {
+		name   string
+		metric promMetric
+		want   bool
+	}{
+		{
+			name: "valid gauge metric",
+			metric: promMetric{
+				name:       "memory_usage",
+				metricType: metricGuage,
+			},
+			want: true,
+		},
+		{
+			name: "valid counter metric",
+			metric: promMetric{
+				name:       "http_requests_total",
+				metricType: metricCounter,
+			},
+			want: true,
+		},
+		{
+			name: "valid histogram metric",
+			metric: promMetric{
+				name:       "request_duration_seconds",
+				metricType: metricHistorgram,
+			},
+			want: true,
+		},
+		{
+			name: "invalid metric type",
+			metric: promMetric{
+				name:       "memory_usage",
+				metricType: "invalid_type",
+			},
+			want: false,
+		},
+	}
 
-	// incorrect units
-	r = strings.NewReader("MemTotal:        foo kB\nMemFree:         bar kB")
-	d, err = parseMemInfo(r)
-	assert.EqualError(t, err, "could not convert \"foo\" to uint64 for metric \"MemTotal\". strconv.ParseUint: parsing \"foo\": invalid syntax")
-	assert.Equal(t, map[string]uint64{}, d)
-
-	// unexpected individual metric format (missing ':')
-	r = strings.NewReader("MemTotal        3888568 kB\nMemFree:         2838832 kB")
-	d, err = parseMemInfo(r)
-	assert.Nil(t, err)
-	assert.Equal(t, map[string]uint64{"memfree": 2838832}, d)
-
-	// empty file passed (io.Reader)
-	r = strings.NewReader("")
-	d, err = parseMemInfo(r)
-	assert.Nil(t, err)
-	assert.Equal(t, map[string]uint64{}, d)
+	for _, c := range tests {
+		t.Run(c.name, func(t *testing.T) {
+			assert.Equal(t, c.want, c.metric.isValidateMetric())
+		})
+	}
 }
