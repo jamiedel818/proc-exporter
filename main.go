@@ -10,30 +10,15 @@ import (
 	"github.com/jamidel818/mini-node-exporter/collector"
 )
 
-/*
-HTTP serving and metrics collection should be their own goroutines. HTTP can be main
-
-Algo:
-Start a timer(stored in main object)
-everytime the timer hits
-	- aquire a lock stored in the main object
-	- open files sequentially (mem, cpu, etc. This can be a []ProcFile{})
-	- update the data, release the lock
-
-HTTP server
-- Try and aquire the lock on the main object to read the data. Generate response on /metrics
-  in prom style metrics. Maybe each ProcFile has a method for generating this.
-- release the lock
-
-Maybe use basic system logging
-
-*/
-
+// AppHandler is the high level struct responsible for storing shared data and orchestrating the exporter.
 type AppHandler struct {
 	Lock    sync.Mutex
 	Metrics []collector.Collector
 }
 
+// CollectMetrics continuously instructs the configured collector.Collectors to get the latest metric data.
+// Data is stored in each collectors unexported data field.
+// TODO make the ticker configurable
 func (h *AppHandler) CollectMetrics() {
 	ticker := time.NewTicker(5 * time.Second)
 
@@ -41,7 +26,6 @@ func (h *AppHandler) CollectMetrics() {
 	for {
 		<-ticker.C
 
-		fmt.Println("Taking the lock to write data")
 		h.Lock.Lock()
 
 		for _, c := range h.Metrics {
@@ -50,13 +34,13 @@ func (h *AppHandler) CollectMetrics() {
 				fmt.Println(err)
 			}
 		}
-		fmt.Println("Lock released after writing data")
+
 		h.Lock.Unlock()
 	}
 }
 
+// GetMetrcs instructs the configured collector.Collectors to output their stored metrics in prometheus format.
 func (h *AppHandler) GetMetrcs() string {
-	fmt.Println("Aquiring the lock to read metrics")
 	h.Lock.Lock()
 	defer h.Lock.Unlock()
 
@@ -64,23 +48,34 @@ func (h *AppHandler) GetMetrcs() string {
 	for _, c := range h.Metrics {
 		metrics += c.OutputPromMetrics()
 	}
-	fmt.Println("Releasing the lock after reading metrics")
+
 	return metrics
 }
 
 func main() {
+	fmt.Println("starting mini-node-exporter")
+
 	handler := &AppHandler{
 		Lock: sync.Mutex{},
 		Metrics: []collector.Collector{
-			&collector.MemInfo{ProcFileName: "./fixtures/meminfo_full"},
+			&collector.MemInfo{ProcFileName: "./fixtures/meminfo_full"}, // TODO this needs to be the real procfiles location
 		},
 	}
 
 	go handler.CollectMetrics()
 
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "%v", handler.GetMetrcs())
 	})
 
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, "ok")
+	})
+
+	// TODO make the port configurable
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
