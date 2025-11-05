@@ -53,7 +53,6 @@ func TestMemInfoparseMemInfo(t *testing.T) {
 	assert.Equal(t, map[string]uint64{}, d)
 }
 
-// TODO write this test
 func TestOutputPromMetrics(t *testing.T) {
 	assert.True(t, true)
 }

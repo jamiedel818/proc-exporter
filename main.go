@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,15 +13,16 @@ import (
 
 // AppHandler is the high level struct responsible for storing shared data and orchestrating the exporter.
 type AppHandler struct {
-	Lock    sync.Mutex
-	Metrics []collector.Collector
+	Lock           sync.Mutex
+	Metrics        []collector.Collector
+	ScrapeInterval int
 }
 
 // CollectMetrics continuously instructs the configured collector.Collectors to get the latest metric data.
 // Data is stored in each collectors unexported data field.
 // TODO make the ticker configurable
 func (h *AppHandler) CollectMetrics() {
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(time.Duration(h.ScrapeInterval) * time.Second)
 
 	defer ticker.Stop()
 	for {
@@ -53,12 +55,21 @@ func (h *AppHandler) GetMetrcs() string {
 }
 
 func main() {
-	fmt.Println("starting mini-node-exporter")
+	procDir := flag.String("d", "/proc", "path to the systems proc directory")
+	port := flag.Int("p", 8080, "port to run the http server")
+	interval := flag.Int("i", 10, "interval to scrape proc files")
+
+	flag.Parse()
+	fmt.Println("Starting proc-exporter")
+	fmt.Printf("PROC DIR: %s\n", *procDir)
+	fmt.Printf("PORT: %d\n", *port)
+	fmt.Printf("INTERVAL: %d\n", *interval)
 
 	handler := &AppHandler{
-		Lock: sync.Mutex{},
+		Lock:           sync.Mutex{},
+		ScrapeInterval: *interval,
 		Metrics: []collector.Collector{
-			&collector.MemInfo{ProcFileName: "./fixtures/meminfo_full"}, // TODO this needs to be the real procfiles location
+			&collector.MemInfo{ProcFileName: fmt.Sprintf("%s/meminfo", *procDir)},
 		},
 	}
 
@@ -76,6 +87,5 @@ func main() {
 		fmt.Fprintf(w, "ok")
 	})
 
-	// TODO make the port configurable
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
