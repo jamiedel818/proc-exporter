@@ -1,6 +1,5 @@
 # proc-exporter
-
-A lightweight option to export metrics from proc files in Prometheus format
+A lightweight option to export metrics from proc files in Prometheus format. Written as a node-exporter alternative for my resource strapped pi.
 
 ## Usage
 Start the exporter with default settings:
