@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,7 +21,6 @@ type AppHandler struct {
 
 // CollectMetrics continuously instructs the configured collector.Collectors to get the latest metric data.
 // Data is stored in each collectors unexported data field.
-// TODO make the ticker configurable
 func (h *AppHandler) CollectMetrics() {
 	ticker := time.NewTicker(time.Duration(h.ScrapeInterval) * time.Second)
 
@@ -60,6 +60,7 @@ func main() {
 	interval := flag.Int("i", 10, "interval to scrape proc files")
 
 	flag.Parse()
+
 	fmt.Println("Starting proc-exporter")
 	fmt.Printf("PROC DIR: %s\n", *procDir)
 	fmt.Printf("PORT: %d\n", *port)
@@ -69,7 +70,7 @@ func main() {
 		Lock:           sync.Mutex{},
 		ScrapeInterval: *interval,
 		Metrics: []collector.Collector{
-			&collector.MemInfo{ProcFileName: fmt.Sprintf("%s/meminfo", *procDir)},
+			&collector.MemInfo{ProcFileName: fmt.Sprintf("%s/meminfo", strings.TrimSuffix(*procDir, "/"))},
 		},
 	}
 
